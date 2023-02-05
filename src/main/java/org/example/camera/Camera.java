@@ -81,19 +81,19 @@ public class Camera {
         float cameraSpeed = movementSpeed * deltaTime; // adjust accordingly
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             cameraPos.add(new Vector3f(cameraFront).mul(cameraSpeed));
-            printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
+            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
             cameraPos.sub(new Vector3f(cameraFront).mul(cameraSpeed));
-            printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
+            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
             cameraPos.sub(new Vector3f(cameraFront).cross(cameraUp).normalize().mul(cameraSpeed));
-            printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
+            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
             cameraPos.add(new Vector3f(cameraFront).cross(cameraUp).normalize().mul(cameraSpeed));
-            printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
+            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
     }
 
