@@ -34,7 +34,7 @@ import static org.lwjgl.opengl.GL33.*;
 import static org.lwjgl.system.MemoryUtil.NULL;
 
 @SuppressWarnings("DataFlowIssue")
-public class MarioCartAnimation {
+public class Animation {
     static Camera camera = new Camera();
     static float deltaTime = 0.0f;    // Time between current frame and last frame
     static float lastTime = 0.0f; // Time of last frame
@@ -42,15 +42,15 @@ public class MarioCartAnimation {
     static float fogFactor = 0f;
     static Vector3f worldUp = new Vector3f(0, 1, 0);
 
-    private static final String phongVertexShaderSource = MarioCartAnimation.class.getResource("shaders/phong_shader.vert").getFile();
+    private static final String phongVertexShaderSource = Animation.class.getResource("shaders/phong_shader.vert").getFile();
 
-    private static final String phongFragmentShaderSource = MarioCartAnimation.class.getResource("shaders/phong_shader.frag").getFile();
-    private static final String gouraudVertexShaderSource = MarioCartAnimation.class.getResource("shaders/gouraud_shader.vert").getFile();
+    private static final String phongFragmentShaderSource = Animation.class.getResource("shaders/phong_shader.frag").getFile();
+    private static final String gouraudVertexShaderSource = Animation.class.getResource("shaders/gouraud_shader.vert").getFile();
 
-    private static final String gouraudFragmentShaderSource = MarioCartAnimation.class.getResource("shaders/gouraud_shader.frag").getFile();
-    private static final String flatVertexShaderSource = MarioCartAnimation.class.getResource("shaders/flat_shader.vert").getFile();
+    private static final String gouraudFragmentShaderSource = Animation.class.getResource("shaders/gouraud_shader.frag").getFile();
+    private static final String flatVertexShaderSource = Animation.class.getResource("shaders/flat_shader.vert").getFile();
 
-    private static final String flatFragmentShaderSource = MarioCartAnimation.class.getResource("shaders/flat_shader.frag").getFile();
+    private static final String flatFragmentShaderSource = Animation.class.getResource("shaders/flat_shader.frag").getFile();
 
     private static final List<PointLight> pointLights = new ArrayList<>();
     private static final List<SpotLight> spotLights = new ArrayList<>();
@@ -96,20 +96,22 @@ public class MarioCartAnimation {
                 .build();
 
         // Models
-        Model satellite = new Model(MarioCartAnimation.class.getResource("SpaceStation.obj").getPath());
-        Model spaceShip = new Model(MarioCartAnimation.class.getResource("SciFi_Fighter_AK5.obj").getPath());
-        Model neptune = new Model(MarioCartAnimation.class.getResource("Neptune.obj").getPath());
+        Model satellite = new Model(Animation.class.getResource("SpaceStation.obj").getPath());
+        Model spaceShip = new Model(Animation.class.getResource("SciFi_Fighter_AK5.obj").getPath());
+        Model neptune = new Model(Animation.class.getResource("Neptune.obj").getPath());
 
 
-        List<Vector3f[]> positions = Files.readAllLines(new File(MarioCartAnimation.class.getResource("ps.txt").getPath()).toPath()).stream()
+        List<Vector3f[]> positions = Files.readAllLines(new File(Animation.class.getResource("ps.txt").getPath()).toPath()).stream()
                 .map(line -> line.split(" "))
                 .map(l-> new Vector3f[] {
                         new Vector3f(Float.parseFloat(l[0]), Float.parseFloat(l[1]), Float.parseFloat(l[2])),
                         new Vector3f(Float.parseFloat(l[3]), Float.parseFloat(l[4]), Float.parseFloat(l[5]))
                 }).collect(Collectors.toList());
+
         float frame = 0;
         int framesInSecond = 0;
         float prevFullSecondTime = 0;
+
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         var carFront = new Vector2f(0f, -1f).normalize();
 
@@ -152,13 +154,7 @@ public class MarioCartAnimation {
             final var projection = new Matrix4f()
                     .perspective((float) toRadians(camera.getFov()), 1920.0f / 1080.0f, 0.1f, 100.0f);
 
-            // choosing a shader
-//            Shader currentShader = switch (shaderType) {
-//                case GOURAUD -> gouraudShader;
-//                case FLAT -> flatShader;
-//                default -> phongShader;
-//            };
-
+            // change shader
             Shader currentShader;
 
             switch(shaderType)  {
@@ -179,7 +175,41 @@ public class MarioCartAnimation {
 
             try (MemoryStack stack = MemoryStack.stackPush()) {
 
-                // spotlights
+                // set up view and projection
+                currentShader.setMatrix4fv("view", view.get(stack.mallocFloat(16)));
+                currentShader.setMatrix4fv("projection", projection.get(stack.mallocFloat(16)));
+                currentShader.setVec3("viewPos", camera.getCameraPos());
+
+                // satellite
+               var model = new Matrix4f()
+                        .rotate((float) glfwGetTime() * 0.2f, new Vector3f(0f, 1f, 1f))
+                        .translate(new Vector3f(6f, 0.5f,0))
+                        .rotate(0.5f, new Vector3f(1f,0f,1f))
+                        .scale(0.04f);
+                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
+                satellite.draw(currentShader);
+
+                Vector3f result = new Vector3f();
+                model.transformPosition(new Vector3f(0,0,0), result);
+                var SatelliteSpotlightRotationAxis = new Vector3f(-result.x, 0, -result.z).cross(worldUp)
+                        .normalize();
+                var SatelliteSpotLightDirection = new Vector3f(-result.x, -result.y, -result.z)
+                        .rotateAxis((float) toRadians(spotLightRotation),
+                                SatelliteSpotlightRotationAxis.x, SatelliteSpotlightRotationAxis.y, SatelliteSpotlightRotationAxis.z)
+                        .normalize();
+
+                var satelliteLight = spotLights.get(2);
+                satelliteLight.setLightPosition(result);
+                satelliteLight.setDirection(SatelliteSpotLightDirection);
+
+                // spaceShip
+                model = new Matrix4f()
+                        .translate(carPosGround)
+                        .rotate(new Vector2f(nextCarFront).angle(carFront), new Vector3f(0f, 1f, 0f))
+                        .scale(0.0008f);
+                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
+                spaceShip.draw(currentShader);
+
                 var spotlightRotationAxis = new Vector3f(nextCarFront.x, 0, nextCarFront.y).cross(worldUp)
                         .normalize();
                 var spotLightDirection = new Vector3f(nextCarFront.x, 0, nextCarFront.y)
@@ -202,47 +232,17 @@ public class MarioCartAnimation {
                         .add(new Vector3f(spotLightDirection).mul(0.1f)));
                 rightLight.setDirection(spotLightDirection);
 
-
-
-                // light uniforms
-                pointLights.forEach(light -> light.applyUniforms(currentShader));
-                spotLights.forEach(light -> light.applyUniforms(currentShader));
-                directionalLights.forEach(light -> light.applyUniforms(currentShader));
-
-                // set up view and projection
-                currentShader.setMatrix4fv("view", view.get(stack.mallocFloat(16)));
-                currentShader.setMatrix4fv("projection", projection.get(stack.mallocFloat(16)));
-                currentShader.setVec3("viewPos", camera.getCameraPos());
-
-                // satellite
-               var model = new Matrix4f()
-                        .rotate((float) glfwGetTime() * 0.5f, new Vector3f(0f, 1f, 1f))
-                        .translate(new Vector3f(5.5f, 0.1f,0))
-                        .rotate(0.5f, new Vector3f(1f,0f,1f))
-                        .scale(0.04f);
-                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
-                satellite.draw(currentShader);
-
-                var satelliteLight = spotLights.get(2);
-                Vector3f result = new Vector3f();
-                model.transformPosition(new Vector3f(0,0,0), result);
-                satelliteLight.setLightPosition(result);
-                satelliteLight.setDirection(new Vector3f(-result.x,-result.y,-result.z));
-
-                // spaceShip
-                model = new Matrix4f()
-                        .translate(carPosGround)
-                        .rotate(new Vector2f(nextCarFront).angle(carFront), new Vector3f(0f, 1f, 0f))
-                        .scale(0.0008f);
-                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
-                spaceShip.draw(currentShader);
-
                 // Neptune
                 model = new Matrix4f()
                         .rotate((float) glfwGetTime(), new Vector3f(0f, 1f, 0f))
                         .scale(0.8f);
                 currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
                 neptune.draw(currentShader);
+
+                // light uniforms
+                pointLights.forEach(light -> light.applyUniforms(currentShader));
+                spotLights.forEach(light -> light.applyUniforms(currentShader));
+                directionalLights.forEach(light -> light.applyUniforms(currentShader));
 
                 // lamps
                 pointLights.forEach(pointLight -> pointLight.draw(currentShader));
@@ -254,7 +254,7 @@ public class MarioCartAnimation {
     }
 
     private static void setupLights() {
-        Model lamp = new Model(MarioCartAnimation.class.getResource("Low_poly_UFO.obj").getPath());
+        Model lamp = new Model(Animation.class.getResource("Low_poly_UFO.obj").getPath());
         DirectionalLight directionalLight = DirectionalLight.builder()
                 .direction(new Vector3f(0, -1f, 0))
                 .ambient(directionalLightColor)
@@ -264,11 +264,11 @@ public class MarioCartAnimation {
         directionalLights.add(directionalLight);
         //  PointLights
         Vector3f[] pointLightPositions = {
-                new Vector3f(new Vector3f(-10, 2, -10)),
+                new Vector3f(new Vector3f(-8f, 2f, -8f)),
                 new Vector3f(new Vector3f(10f, 0, -10f)),
-                new Vector3f(new Vector3f(10f, 0, 10f)),
-                new Vector3f(new Vector3f(-10f, 0, 10f)),
-                new Vector3f(new Vector3f(7f, 0, 0)),
+                new Vector3f(new Vector3f(10f, 3f, 10f)),
+                new Vector3f(new Vector3f(-7f, 0, 7f)),
+                new Vector3f(new Vector3f(9f, -2f, 0)),
         };
         int index = 0;
         for (var position : pointLightPositions) {
@@ -309,8 +309,8 @@ public class MarioCartAnimation {
         if(glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
             camera.stopProcessingMouseMovement(window);
             cameraMovementType = STATIC;
-            camera.setCameraPos(new Vector3f(0f, 1f, 20f));
-            camera.setCameraFront( new Vector3f(0f, -1f, -20f).normalize());
+            camera.setCameraPos(new Vector3f(-1.9470121f, 7.8995733f, 25.64252f));
+            camera.setCameraFront( new Vector3f(0.110537454f, -0.3583683f, -0.9270134f).normalize());
         } else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
             camera.stopProcessingMouseMovement(window);
             cameraMovementType = FOLLOW;
@@ -319,9 +319,6 @@ public class MarioCartAnimation {
             cameraMovementType = FPV;
         } else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
             cameraMovementType = FREE;
-        } else if (glfwGetKey(window, GLFW_KEY_5) == GLFW_PRESS) {
-            cameraMovementType = STATIC;
-            camera.setCameraPos(new Vector3f(7f, 0f, 0f));
         } else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS &&
                 glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
             // fog up

@@ -1,6 +1,6 @@
 package org.example.models;
 
-import org.example.MarioCartAnimation;
+import org.example.Animation;
 import org.example.shader.Shader;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -143,7 +143,7 @@ public class Model {
         int[] components = new int[1];
 //        stbi_set_flip_vertically_on_load(true);
         System.out.println("loading " + path);
-        String imagePath = new File(MarioCartAnimation.class.getResource(path).getPath()).toString();
+        String imagePath = new File(Animation.class.getResource(path).getPath()).toString();
         ByteBuffer image = stbi_load(imagePath, w, h, components, 0);
         int format = GL_RGB;
         if(components[0] == 4) format = GL_RGBA;
