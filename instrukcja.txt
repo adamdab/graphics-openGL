@@ -1,0 +1,8 @@
+p - phong shading
+g - grouard sharong
+f - flat shading
+
+arros up/down changes position of car's lights
+1, 2, 3 changes camera
+Ctrl + arrow up/down changes fog
+Shift + arrow up/down changes daylight
