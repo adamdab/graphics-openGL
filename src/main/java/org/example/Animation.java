@@ -1,14 +1,20 @@
 package org.example;
 
 import org.example.camera.Camera;
-import org.example.fog.Fog;
+import org.example.camera.CameraMovementType;
+import static org.example.camera.CameraMovementType.*;
+
 import org.example.lights.DirectionalLight;
 import org.example.lights.PointLight;
 import org.example.lights.SpotLight;
-import org.example.models.CameraMovementType;
+
 import org.example.models.Model;
-import org.example.models.ShaderType;
+
 import org.example.shader.Shader;
+import org.example.shader.ShaderType;
+import static org.example.shader.ShaderType.*;
+import org.example.shader.fog.Fog;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
@@ -27,8 +33,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static java.lang.Math.*;
-import static org.example.models.CameraMovementType.*;
-import static org.example.models.ShaderType.*;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL33.*;
 import static org.lwjgl.system.MemoryUtil.NULL;

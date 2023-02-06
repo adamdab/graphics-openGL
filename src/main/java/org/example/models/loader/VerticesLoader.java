@@ -1,4 +1,6 @@
-package org.example.models;
+package org.example.models.loader;
+
+import org.example.models.components.Vertex;
 
 import org.lwjgl.system.MemoryUtil;
 

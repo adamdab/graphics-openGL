@@ -1,4 +1,4 @@
-package org.example.models;
+package org.example.models.loader;
 
 import org.lwjgl.system.MemoryUtil;
 

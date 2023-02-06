@@ -1,4 +1,4 @@
-package org.example.fog;
+package org.example.shader.fog;
 
 import lombok.Builder;
 import lombok.Getter;

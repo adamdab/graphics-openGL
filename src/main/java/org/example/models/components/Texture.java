@@ -1,4 +1,4 @@
-package org.example.models;
+package org.example.models.components;
 
 public class Texture {
     private int id;

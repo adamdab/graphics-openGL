@@ -1,6 +1,9 @@
 package org.example.models;
 
 import org.example.shader.Shader;
+import org.example.models.loader.IndicesLoader;
+import org.example.models.loader.VerticesLoader;
+import org.example.models.components.*;
 
 import java.util.List;
 

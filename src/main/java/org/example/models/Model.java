@@ -2,6 +2,10 @@ package org.example.models;
 
 import org.example.Animation;
 import org.example.shader.Shader;
+import org.example.models.components.Texture;
+import org.example.models.components.Material;
+import org.example.models.components.Vertex;
+
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.lwjgl.assimp.*;

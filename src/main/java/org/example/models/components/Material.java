@@ -1,4 +1,4 @@
-package org.example.models;
+package org.example.models.components;
 
 import org.joml.Vector3f;
 import org.joml.Vector4f;
