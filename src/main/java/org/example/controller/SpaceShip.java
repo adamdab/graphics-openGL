@@ -52,7 +52,6 @@ public class SpaceShip extends Controller {
         int frameId = (int)frame % positions.size();
         return positions.get(frameId)[0];
     }
-
     public Vector3f getShipFront(float frame) {
         int frameId = (int)frame % positions.size();
         return positions.get(frameId)[1];

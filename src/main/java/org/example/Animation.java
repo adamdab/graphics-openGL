@@ -1,6 +1,7 @@
 package org.example;
 
 import org.example.window.Window;
+import org.example.manager.CameraManager;
 import org.example.manager.LightManager;
 import org.example.controller.SpaceShip;
 import org.example.controller.Satellite;
@@ -44,16 +45,15 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 
 @SuppressWarnings("DataFlowIssue")
 public class Animation {
-    static Camera camera = new Camera();
     static float deltaTime = 0.0f;    // Time between current frame and last frame
     static float lastTime = 0.0f; // Time of last frame
-    private static CameraMovementType cameraMovementType = TPV;
 
     private static Window window = new Window();
     private static SpaceShip spaceShip;
     private static Satellite satellite;
     private static Neptune neptune;
     private static LightManager lightManager;
+    private static CameraManager cameraManager;
     public static void main(String[] args) throws IOException {
 
         window.init();
@@ -62,6 +62,7 @@ public class Animation {
             return;
         }
 
+        cameraManager = new CameraManager();
         lightManager = new LightManager();
         lightManager.init();
 
@@ -76,6 +77,7 @@ public class Animation {
         window.bindBuffer();
 
         // Begin animation
+        System.out.println("[Begin of animation]");
         while (!window.shouldBeClosed()) {
 
             // frames per second calculation
@@ -98,23 +100,7 @@ public class Animation {
 
             processInput();
 
-            // camera movement
-            switch(cameraMovementType) {
-                case FPV:
-                    camera.setCameraPos(new Vector3f(0f,0.3f,0f).add(spaceShipPosition));
-                    camera.setCameraFront(new Vector3f(nextShipCameraFront.x, 0f , nextShipCameraFront.y));
-                    break;
-                case TPV:
-                    camera.setCameraPos(new Vector3f(0f,0.5f,0f)
-                            .add(new Vector3f(-nextShipCameraFront.x * 3, 0f , -nextShipCameraFront.y * 3))
-                            .add(spaceShipPosition));
-                    camera.setCameraFront(new Vector3f(nextShipCameraFront.x, 0f , nextShipCameraFront.y));
-                    break;
-                case FREE:
-                    camera.processInput(window.getHandler(), deltaTime);
-                    camera.startProcessingMouseMovement(window.getHandler());
-                    break;
-            }
+            cameraManager.moveCamera(spaceShipPosition, nextShipCameraFront, deltaTime, window.getHandler());
 
             window.cleanFrame();
             Shader currentShader = window.getCurrentShader();
@@ -125,13 +111,13 @@ public class Animation {
             try (MemoryStack stack = MemoryStack.stackPush()) {
 
                 // set up view and projection
-                final var view = camera.getViewMatrix();
+                final var view = cameraManager.getView();
                 final var projection = new Matrix4f()
-                        .perspective((float) toRadians(camera.getFov()), 1920.0f / 1080.0f, 0.1f, 100.0f);
+                        .perspective((float) toRadians(cameraManager.getFov()), 1920.0f / 1080.0f, 0.1f, 100.0f);
 
                 currentShader.setMatrix4fv("view", view.get(stack.mallocFloat(16)));
                 currentShader.setMatrix4fv("projection", projection.get(stack.mallocFloat(16)));
-                currentShader.setVec3("viewPos", camera.getCameraPos());
+                currentShader.setVec3("viewPos", cameraManager.getPosition());
 
                 // satellite
                 satellite.setStack(stack);
@@ -154,18 +140,13 @@ public class Animation {
 
     private static void processInput() {
         if(window.checkIfPressed(GLFW_KEY_1)) {
-            camera.stopProcessingMouseMovement(window.getHandler());
-            cameraMovementType = STATIC;
-            camera.setCameraPos(new Vector3f(-1.9470121f, 7.8995733f, 25.64252f));
-            camera.setCameraFront( new Vector3f(0.110537454f, -0.3583683f, -0.9270134f).normalize());
+            cameraManager.changeCameraMovementType(STATIC, window.getHandler());
         } else if (window.checkIfPressed(GLFW_KEY_2)) {
-            camera.stopProcessingMouseMovement(window.getHandler());
-            cameraMovementType = TPV;
+            cameraManager.changeCameraMovementType(TPV, window.getHandler());
         } else if (window.checkIfPressed(GLFW_KEY_3)) {
-            camera.stopProcessingMouseMovement(window.getHandler());
-            cameraMovementType = FPV;
+            cameraManager.changeCameraMovementType(FPV, window.getHandler());
         } else if (window.checkIfPressed(GLFW_KEY_4)) {
-            cameraMovementType = FREE;
+            cameraManager.changeCameraMovementType(FREE, window.getHandler());
         } else if (window.checkIfPressed(GLFW_KEY_LEFT_CONTROL) && window.checkIfPressed(GLFW_KEY_UP)) {
             lightManager.increaseFog(deltaTime);
         } else if (window.checkIfPressed(GLFW_KEY_LEFT_CONTROL) && window.checkIfPressed(GLFW_KEY_DOWN)) {
