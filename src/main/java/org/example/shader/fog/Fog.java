@@ -13,7 +13,7 @@ public class Fog {
     private float density;
 
     public void applyFog(Shader shader) {
-        shader.setVec3("fogParameters.color", color);
-        shader.setFloat("fogParameters.density", density);
+        shader.setVec3("fog.color", color);
+        shader.setFloat("fog.density", density);
     }
 }

@@ -9,14 +9,14 @@ import org.joml.Vector3f;
 @Getter
 @Setter
 @SuperBuilder
-public class SpotLight extends AbstractLightWithPosition {
+public class SpotLight extends LightWithPosition {
     protected Vector3f direction;
     protected float cutOff;
     protected float outerCutOff;
 
     @Override
-    public void applyUniforms(Shader shader) {
-        super.applyUniforms(shader);
+    public void apply(Shader shader) {
+        super.apply(shader);
         shader.setVec3(name() + ".direction", direction);
         shader.setFloat(name() + ".cutOff", cutOff);
         shader.setFloat(name() + ".outerCutOff", outerCutOff);

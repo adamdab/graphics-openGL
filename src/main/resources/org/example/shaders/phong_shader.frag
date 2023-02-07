@@ -57,7 +57,7 @@ uniform Material material;
 uniform DirectionalLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLights[NR_SPOT_LIGHTS];
-uniform Fog fogParameters;
+uniform Fog fog;
 uniform vec3 viewPos;
 uniform int useTexture;
 
@@ -90,7 +90,7 @@ void main()
         result += CalcSpotLight(spotLights[i], norm, fragPos, viewDir, diffuseColor);
     // fog
     float fogCoordinate = abs(eyeSpacePosition.z / eyeSpacePosition.w);
-    result = mix(result, fogParameters.color, getFogFactor(fogParameters, fogCoordinate));
+    result = mix(result, fog.color, getFogFactor(fog, fogCoordinate));
 
     fragColor = vec4(result, 1.0);
 }

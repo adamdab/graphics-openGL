@@ -8,12 +8,12 @@ import org.joml.Vector3f;
 @Getter
 @Setter
 @SuperBuilder
-public class DirectionalLight extends AbstractLight{
+public class DirectionalLight extends Light{
     protected Vector3f direction;
 
     @Override
-    public void applyUniforms(Shader shader) {
-        super.applyUniforms(shader);
+    public void apply(Shader shader) {
+        super.apply(shader);
         shader.setVec3(name() + ".direction", direction);
     }
 

@@ -123,9 +123,9 @@ public class LightManager {
     public void applyLighting(Shader currentShader) {
 
         // apply uniforms for shaders
-        pointLights.forEach(light -> light.applyUniforms(currentShader));
-        spotLights.forEach(light -> light.applyUniforms(currentShader));
-        directionalLights.forEach(light -> light.applyUniforms(currentShader));
+        pointLights.forEach(light -> light.apply(currentShader));
+        spotLights.forEach(light -> light.apply(currentShader));
+        directionalLights.forEach(light -> light.apply(currentShader));
 
         // draw ufos - lamps
         pointLights.forEach(pointLight -> pointLight.draw(currentShader));

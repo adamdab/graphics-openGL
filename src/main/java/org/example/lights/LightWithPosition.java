@@ -9,7 +9,7 @@ import org.joml.Vector3f;
 
 @Getter @Setter
 @SuperBuilder
-public abstract class AbstractLightWithPosition extends AbstractLight {
+public abstract class LightWithPosition extends Light {
     private static final Vector3f lightColor = new Vector3f(1, 1, 1);
     protected Vector3f lightPosition;
     protected Vector3f modelPosition;
@@ -20,8 +20,8 @@ public abstract class AbstractLightWithPosition extends AbstractLight {
     protected int vao;
 
     @Override
-    public void applyUniforms(Shader shader) {
-        super.applyUniforms(shader);
+    public void apply(Shader shader) {
+        super.apply(shader);
         shader.setVec3(name() + ".position", lightPosition);
         shader.setFloat(name() + ".constant", constant);
         shader.setFloat(name() + ".linear", linear);

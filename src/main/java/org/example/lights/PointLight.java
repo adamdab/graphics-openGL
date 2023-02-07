@@ -10,7 +10,7 @@ import org.lwjgl.system.MemoryStack;
 @Getter
 @Setter
 @SuperBuilder
-public class PointLight extends AbstractLightWithPosition {
+public class PointLight extends LightWithPosition {
 
     @Override
     public void draw(Shader shader) {
