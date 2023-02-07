@@ -6,8 +6,6 @@ import org.lwjgl.glfw.GLFWCursorPosCallback;
 
 import static java.lang.Math.*;
 import static java.lang.Math.toRadians;
-import java.io.PrintWriter;
-import java.io.FileWriter;
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.glfw.GLFW.GLFW_PRESS;
 
@@ -17,40 +15,14 @@ public class Camera {
     private Vector3f cameraUp = new Vector3f(0, 1, 0);
     private Vector3f cameraFront = new Vector3f(0, 0, -1);
     private float lastX = 400, lastY = 300;
-    private FileWriter fileWriter;
-    private PrintWriter printWriter;
     private float yaw = -90f, pitch = 0;
     private float fov = 45;
     private float movementSpeed = 2.5f;
     private float mouseSensitivity = 0.1f;
     private boolean firstMouse = true;
     private GLFWCursorPosCallback mouseCallback;
-    public Camera(Vector3f cameraPos, Vector3f cameraUp, Vector3f cameraFront,
-                  float lastX, float lastY, float yaw, float pitch, float fov, float movementSpeed, float mouseSensitivity)
-    throws Exception{
-        this.cameraPos = cameraPos;
-        this.cameraUp = cameraUp;
-        this.cameraFront = cameraFront;
-        this.lastX = lastX;
-        this.lastY = lastY;
-        this.yaw = yaw;
-        this.pitch = pitch;
-        this.fov = fov;
-        this.movementSpeed = movementSpeed;
-        this.mouseSensitivity = mouseSensitivity;
-        fileWriter = new FileWriter("ps.txt");
-        printWriter = new PrintWriter(fileWriter);
-    }
 
-    public Camera() {
-        try {
-            fileWriter = new FileWriter("ps.txt");
-            printWriter = new PrintWriter(fileWriter);
-        }
-        catch (Exception e){
-            System.out.println(e);
-        }
-    }
+    public Camera() {}
 
     public Vector3f getCameraPos() {
         return cameraPos;
@@ -78,22 +50,18 @@ public class Camera {
     }
 
     public void processInput(long window, float deltaTime) {
-        float cameraSpeed = movementSpeed * deltaTime; // adjust accordingly
+        float cameraSpeed = movementSpeed * deltaTime;
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             cameraPos.add(new Vector3f(cameraFront).mul(cameraSpeed));
-            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
             cameraPos.sub(new Vector3f(cameraFront).mul(cameraSpeed));
-            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
             cameraPos.sub(new Vector3f(cameraFront).cross(cameraUp).normalize().mul(cameraSpeed));
-            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
             cameraPos.add(new Vector3f(cameraFront).cross(cameraUp).normalize().mul(cameraSpeed));
-            //printWriter.println(cameraPos.x()+" "+cameraPos.y()+" "+cameraPos.z()+" "+cameraFront.x()+" "+cameraFront.y()+" "+cameraFront.z());
         }
     }
 
@@ -108,7 +76,7 @@ public class Camera {
             }
 
             float xoffset = (float) xpos - lastX;
-            float yoffset = lastY - (float) ypos; // reversed since y-coordinates range from bottom to top
+            float yoffset = lastY - (float) ypos;
             lastX = (float) xpos;
             lastY = (float) ypos;
 
@@ -143,7 +111,6 @@ public class Camera {
             mouseCallback.close();
             glfwSetCursorPosCallback(window, null);
             mouseCallback = null;
-            printWriter.close();
         }
     }
 

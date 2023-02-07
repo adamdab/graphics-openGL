@@ -1,6 +1,9 @@
 package org.example;
 
 import org.example.window.Window;
+import org.example.controller.SpaceShip;
+import org.example.controller.Satellite;
+import org.example.controller.Neptune;
 
 import org.example.camera.Camera;
 import org.example.camera.CameraMovementType;
@@ -51,9 +54,12 @@ public class Animation {
     private static final List<SpotLight> spotLights = new ArrayList<>();
     private static final List<DirectionalLight> directionalLights = new ArrayList<>();
     private static final Vector3f directionalLightColor = new Vector3f(0.15f, 0.15f, 0.15f);
-    private static CameraMovementType cameraMovementType = FOLLOW;
+    private static CameraMovementType cameraMovementType = TPV;
 
     private static Window window = new Window();
+    private static SpaceShip spaceShip;
+    private static Satellite satellite;
+    private static Neptune neptune;
     public static void main(String[] args) throws IOException {
 
         window.init();
@@ -63,22 +69,14 @@ public class Animation {
         }
         // set up lights and fog
         setupLights();
+
         Fog fog = Fog.builder()
                 .color(directionalLightColor)
                 .build();
 
-        // create models
-        Model satellite = new Model(Animation.class.getResource("SpaceStation.obj").getPath());
-        Model spaceShip = new Model(Animation.class.getResource("SciFi_Fighter_AK5.obj").getPath());
-        Model neptune = new Model(Animation.class.getResource("Neptune.obj").getPath());
-
-        // spaceShip positions
-        List<Vector3f[]> positions = Files.readAllLines(new File(Animation.class.getResource("positions.txt").getPath()).toPath()).stream()
-                .map(line -> line.split(" "))
-                .map(l-> new Vector3f[] {
-                        new Vector3f(Float.parseFloat(l[0]), Float.parseFloat(l[1]), Float.parseFloat(l[2])),
-                        new Vector3f(Float.parseFloat(l[3]), Float.parseFloat(l[4]), Float.parseFloat(l[5]))
-                }).collect(Collectors.toList());
+        spaceShip = new SpaceShip(spotLights.get(1), spotLights.get(0));
+        satellite = new Satellite(spotLights.get(2));
+        neptune = new Neptune();
 
         float frame = 0;
         int framesInSecond = 0;
@@ -90,21 +88,21 @@ public class Animation {
         while (!window.shouldBeClosed()) {
 
             // frames
-            frame+= deltaTime * 300;
+            frame+= deltaTime * 200;
             framesInSecond ++;
-            float currTime = (float) glfwGetTime();
-            deltaTime = currTime - lastTime;
-            lastTime = currTime;
-            if (currTime - prevFullSecondTime >= 1f) {
+            float currentTime = (float) glfwGetTime();
+            deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            if (currentTime - prevFullSecondTime >= 1f) {
                 window.setWindowTitle(framesInSecond);
                 framesInSecond = 0;
-                prevFullSecondTime = currTime;
+                prevFullSecondTime = currentTime;
             }
 
             // position of spaceship
-            var spaceShipPosition = positions.get((int)frame % positions.size())[0];
-            var spaceShipFrontCameraPosition = positions.get((int)frame % positions.size())[1];
-            var nextShipCameraFront = new Vector2f(spaceShipFrontCameraPosition.x, spaceShipFrontCameraPosition.z).normalize();
+            var spaceShipPosition = spaceShip.getShipPosition(frame);
+            var spaceShipFrontCameraPosition = spaceShip.getShipFront(frame);
+            var nextShipCameraFront = spaceShip.getNextShipFront(frame);
 
             processInput();
 
@@ -114,7 +112,7 @@ public class Animation {
                     camera.setCameraPos(new Vector3f(0f,0.3f,0f).add(spaceShipPosition));
                     camera.setCameraFront(new Vector3f(nextShipCameraFront.x, 0f , nextShipCameraFront.y));
                     break;
-                case FOLLOW:
+                case TPV:
                     camera.setCameraPos(new Vector3f(0f,0.5f,0f)
                             .add(new Vector3f(-nextShipCameraFront.x * 3, 0f , -nextShipCameraFront.y * 3))
                             .add(spaceShipPosition));
@@ -146,63 +144,16 @@ public class Animation {
                 currentShader.setVec3("viewPos", camera.getCameraPos());
 
                 // satellite
-               var model = new Matrix4f()
-                        .rotate((float) glfwGetTime() * 0.2f, new Vector3f(0f, 1f, 1f))
-                        .translate(new Vector3f(6f, 0.5f,0))
-                        .rotate(0.5f, new Vector3f(1f,0f,1f))
-                        .scale(0.04f);
-                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
-                satellite.draw(currentShader);
-
-                Vector3f result = new Vector3f();
-                model.transformPosition(new Vector3f(0,0,0), result);
-                var SatelliteSpotlightRotationAxis = new Vector3f(-result.x, 0, -result.z).cross(worldUp)
-                        .normalize();
-                var SatelliteSpotLightDirection = new Vector3f(-result.x, -result.y, -result.z)
-                        .rotateAxis((float) toRadians(spotLightRotation),
-                                SatelliteSpotlightRotationAxis.x, SatelliteSpotlightRotationAxis.y, SatelliteSpotlightRotationAxis.z)
-                        .normalize();
-
-                var satelliteLight = spotLights.get(2);
-                satelliteLight.setLightPosition(result);
-                satelliteLight.setDirection(SatelliteSpotLightDirection);
+                satellite.setStack(stack);
+                satellite.generateFrame(currentShader,spotLightRotation,frame);
 
                 // spaceShip
-                model = new Matrix4f()
-                        .translate(spaceShipPosition)
-                        .rotate(new Vector2f(nextShipCameraFront).angle(new Vector2f(0f,-1f)), new Vector3f(0f, 1f, 0f))
-                        .scale(0.0008f);
-                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
-                spaceShip.draw(currentShader);
-
-                var spotlightRotationAxis = new Vector3f(nextShipCameraFront.x, 0, nextShipCameraFront.y).cross(worldUp)
-                        .normalize();
-                var spotLightDirection = new Vector3f(nextShipCameraFront.x, 0, nextShipCameraFront.y)
-                        .rotateAxis((float) toRadians(spotLightRotation),
-                                spotlightRotationAxis.x, spotlightRotationAxis.y, spotlightRotationAxis.z)
-                        .normalize();
-
-                var leftLight = spotLights.get(0);
-                var rightLight = spotLights.get(1);
-
-                leftLight.setLightPosition(new Vector3f(spaceShipPosition)
-                        .add(new Vector3f(worldUp).mul(0.1f))
-                        .sub(new Vector3f(spotlightRotationAxis).mul(0.15f))
-                        .add(new Vector3f(spotLightDirection).mul(0.1f)));
-                leftLight.setDirection(spotLightDirection);
-
-                rightLight.setLightPosition(new Vector3f(spaceShipPosition)
-                        .add(new Vector3f(worldUp).mul(0.1f))
-                        .add(new Vector3f(spotlightRotationAxis).mul(0.15f))
-                        .add(new Vector3f(spotLightDirection).mul(0.1f)));
-                rightLight.setDirection(spotLightDirection);
+                spaceShip.setStack(stack);
+                spaceShip.generateFrame(currentShader,spotLightRotation,frame);
 
                 // Neptune
-                model = new Matrix4f()
-                        .rotate((float) glfwGetTime(), new Vector3f(0f, 1f, 0f))
-                        .scale(0.8f);
-                currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
-                neptune.draw(currentShader);
+                neptune.setStack(stack);
+                neptune.generateFrame(currentShader,spotLightRotation,frame);
 
                 // apply uniforms for lights
                 pointLights.forEach(light -> light.applyUniforms(currentShader));
@@ -277,7 +228,7 @@ public class Animation {
             camera.setCameraFront( new Vector3f(0.110537454f, -0.3583683f, -0.9270134f).normalize());
         } else if (window.checkIfPressed(GLFW_KEY_2)) {
             camera.stopProcessingMouseMovement(window.getHandler());
-            cameraMovementType = FOLLOW;
+            cameraMovementType = TPV;
         } else if (window.checkIfPressed(GLFW_KEY_3)) {
             camera.stopProcessingMouseMovement(window.getHandler());
             cameraMovementType = FPV;
