@@ -1,5 +1,7 @@
 package org.example;
 
+import org.example.window.Window;
+
 import org.example.camera.Camera;
 import org.example.camera.CameraMovementType;
 import static org.example.camera.CameraMovementType.*;
@@ -45,67 +47,33 @@ public class Animation {
     static float spotLightRotation = -5f;
     static float fogFactor = 0f;
     static Vector3f worldUp = new Vector3f(0, 1, 0);
-
-    private static final String phongVertexShaderSource = Animation.class.getResource("shaders/phong_shader.vert").getFile();
-
-    private static final String phongFragmentShaderSource = Animation.class.getResource("shaders/phong_shader.frag").getFile();
-    private static final String gouraudVertexShaderSource = Animation.class.getResource("shaders/gouraud_shader.vert").getFile();
-
-    private static final String gouraudFragmentShaderSource = Animation.class.getResource("shaders/gouraud_shader.frag").getFile();
-    private static final String flatVertexShaderSource = Animation.class.getResource("shaders/flat_shader.vert").getFile();
-
-    private static final String flatFragmentShaderSource = Animation.class.getResource("shaders/flat_shader.frag").getFile();
-
     private static final List<PointLight> pointLights = new ArrayList<>();
     private static final List<SpotLight> spotLights = new ArrayList<>();
     private static final List<DirectionalLight> directionalLights = new ArrayList<>();
     private static final Vector3f directionalLightColor = new Vector3f(0.15f, 0.15f, 0.15f);
     private static CameraMovementType cameraMovementType = FOLLOW;
-    private static ShaderType shaderType = PHONG;
 
+    private static Window window = new Window();
     public static void main(String[] args) throws IOException {
 
-        // init
-        GLFWErrorCallback.createPrint(System.err).set();
-        glfwInit();
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_SAMPLES, 4);
-
-        long window = glfwCreateWindow(1920, 1080, "LearnOpenGL", NULL, NULL);
-        if (window == NULL) {
-            System.out.println("Failed to create GLFW window");
-            glfwTerminate();
+        window.init();
+        if(!window.checkStatus()) {
+            System.out.println("Window initialization failed!");
             return;
         }
-        glfwMakeContextCurrent(window);
-        GL.createCapabilities();
-        glViewport(0, 0, 1920, 1080);
-        glfwSetFramebufferSizeCallback(window, (window1, width, height) -> {
-            glViewport(0, 0, width, height);
-        });
-        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-        glEnable(GL_DEPTH_TEST);
-        glEnable(GL_MULTISAMPLE);
-
-        // initial shader and light configuration
-        Shader phongShader = new Shader(phongVertexShaderSource, phongFragmentShaderSource);
-        Shader gouraudShader = new Shader(gouraudVertexShaderSource, gouraudFragmentShaderSource);
-        Shader flatShader = new Shader(flatVertexShaderSource, flatFragmentShaderSource);
+        // set up lights and fog
         setupLights();
         Fog fog = Fog.builder()
                 .color(directionalLightColor)
                 .build();
 
-        // Models
+        // create models
         Model satellite = new Model(Animation.class.getResource("SpaceStation.obj").getPath());
         Model spaceShip = new Model(Animation.class.getResource("SciFi_Fighter_AK5.obj").getPath());
         Model neptune = new Model(Animation.class.getResource("Neptune.obj").getPath());
 
-
-        List<Vector3f[]> positions = Files.readAllLines(new File(Animation.class.getResource("ps.txt").getPath()).toPath()).stream()
+        // spaceShip positions
+        List<Vector3f[]> positions = Files.readAllLines(new File(Animation.class.getResource("positions.txt").getPath()).toPath()).stream()
                 .map(line -> line.split(" "))
                 .map(l-> new Vector3f[] {
                         new Vector3f(Float.parseFloat(l[0]), Float.parseFloat(l[1]), Float.parseFloat(l[2])),
@@ -116,10 +84,11 @@ public class Animation {
         int framesInSecond = 0;
         float prevFullSecondTime = 0;
 
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-        var carFront = new Vector2f(0f, -1f).normalize();
+        window.bindBuffer();
 
-        while (!glfwWindowShouldClose(window)) {
+        // Begin animation
+        while (!window.shouldBeClosed()) {
+
             // frames
             frame+= deltaTime * 300;
             framesInSecond ++;
@@ -127,51 +96,43 @@ public class Animation {
             deltaTime = currTime - lastTime;
             lastTime = currTime;
             if (currTime - prevFullSecondTime >= 1f) {
-                glfwSetWindowTitle(window, "FPS: " + framesInSecond);
+                window.setWindowTitle(framesInSecond);
                 framesInSecond = 0;
                 prevFullSecondTime = currTime;
             }
-            // carPos
-            var tFront = positions.get((int)frame % positions.size())[1];
-            var nextCarFront = new Vector2f(tFront.x, tFront.z).normalize();
-            var carPos = positions.get((int)frame % positions.size())[0];
-            var carPosGround = carPos;
+
+            // position of spaceship
+            var spaceShipPosition = positions.get((int)frame % positions.size())[0];
+            var spaceShipFrontCameraPosition = positions.get((int)frame % positions.size())[1];
+            var nextShipCameraFront = new Vector2f(spaceShipFrontCameraPosition.x, spaceShipFrontCameraPosition.z).normalize();
+
+            processInput();
 
             // camera movement
-            processInput(window);
-            if (cameraMovementType.equals(FPV)) {
-                camera.setCameraPos(new Vector3f(0f,0.3f,0f).add(carPosGround));
-                camera.setCameraFront(new Vector3f(nextCarFront.x, 0f , nextCarFront.y));
-            } else if (cameraMovementType.equals(FOLLOW)) {
-                camera.setCameraPos(new Vector3f(0f,0.5f,0f)
-                        .add(new Vector3f(-nextCarFront.x * 3, 0f , -nextCarFront.y * 3))
-                        .add(carPosGround));
-                camera.setCameraFront(new Vector3f(nextCarFront.x, 0f , nextCarFront.y));
-            } else if (cameraMovementType == FREE) {
-                camera.processInput(window, deltaTime);
-                camera.startProcessingMouseMovement(window);
+            switch(cameraMovementType) {
+                case FPV:
+                    camera.setCameraPos(new Vector3f(0f,0.3f,0f).add(spaceShipPosition));
+                    camera.setCameraFront(new Vector3f(nextShipCameraFront.x, 0f , nextShipCameraFront.y));
+                    break;
+                case FOLLOW:
+                    camera.setCameraPos(new Vector3f(0f,0.5f,0f)
+                            .add(new Vector3f(-nextShipCameraFront.x * 3, 0f , -nextShipCameraFront.y * 3))
+                            .add(spaceShipPosition));
+                    camera.setCameraFront(new Vector3f(nextShipCameraFront.x, 0f , nextShipCameraFront.y));
+                    break;
+                case FREE:
+                    camera.processInput(window.getHandler(), deltaTime);
+                    camera.startProcessingMouseMovement(window.getHandler());
+                    break;
             }
 
-            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            window.cleanFrame();
+
             final var view = camera.getViewMatrix();
             final var projection = new Matrix4f()
                     .perspective((float) toRadians(camera.getFov()), 1920.0f / 1080.0f, 0.1f, 100.0f);
 
-            // change shader
-            Shader currentShader;
-
-            switch(shaderType)  {
-                case GOURAUD:
-                    currentShader = gouraudShader;
-                    break;
-                case FLAT:
-                    currentShader = flatShader;
-                    break;
-                default:
-                    currentShader = phongShader;
-                    break;
-            }
+            Shader currentShader = window.getCurrentShader();
 
             currentShader.use();
             fog.setDensity(fogFactor);
@@ -208,15 +169,15 @@ public class Animation {
 
                 // spaceShip
                 model = new Matrix4f()
-                        .translate(carPosGround)
-                        .rotate(new Vector2f(nextCarFront).angle(carFront), new Vector3f(0f, 1f, 0f))
+                        .translate(spaceShipPosition)
+                        .rotate(new Vector2f(nextShipCameraFront).angle(new Vector2f(0f,-1f)), new Vector3f(0f, 1f, 0f))
                         .scale(0.0008f);
                 currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
                 spaceShip.draw(currentShader);
 
-                var spotlightRotationAxis = new Vector3f(nextCarFront.x, 0, nextCarFront.y).cross(worldUp)
+                var spotlightRotationAxis = new Vector3f(nextShipCameraFront.x, 0, nextShipCameraFront.y).cross(worldUp)
                         .normalize();
-                var spotLightDirection = new Vector3f(nextCarFront.x, 0, nextCarFront.y)
+                var spotLightDirection = new Vector3f(nextShipCameraFront.x, 0, nextShipCameraFront.y)
                         .rotateAxis((float) toRadians(spotLightRotation),
                                 spotlightRotationAxis.x, spotlightRotationAxis.y, spotlightRotationAxis.z)
                         .normalize();
@@ -224,13 +185,13 @@ public class Animation {
                 var leftLight = spotLights.get(0);
                 var rightLight = spotLights.get(1);
 
-                leftLight.setLightPosition(new Vector3f(carPosGround)
+                leftLight.setLightPosition(new Vector3f(spaceShipPosition)
                         .add(new Vector3f(worldUp).mul(0.1f))
                         .sub(new Vector3f(spotlightRotationAxis).mul(0.15f))
                         .add(new Vector3f(spotLightDirection).mul(0.1f)));
                 leftLight.setDirection(spotLightDirection);
 
-                rightLight.setLightPosition(new Vector3f(carPosGround)
+                rightLight.setLightPosition(new Vector3f(spaceShipPosition)
                         .add(new Vector3f(worldUp).mul(0.1f))
                         .add(new Vector3f(spotlightRotationAxis).mul(0.15f))
                         .add(new Vector3f(spotLightDirection).mul(0.1f)));
@@ -243,18 +204,17 @@ public class Animation {
                 currentShader.setMatrix4fv("model", model.get(stack.mallocFloat(16)));
                 neptune.draw(currentShader);
 
-                // light uniforms
+                // apply uniforms for lights
                 pointLights.forEach(light -> light.applyUniforms(currentShader));
                 spotLights.forEach(light -> light.applyUniforms(currentShader));
                 directionalLights.forEach(light -> light.applyUniforms(currentShader));
 
-                // lamps
+                // draw UFOs
                 pointLights.forEach(pointLight -> pointLight.draw(currentShader));
             }
-            glfwSwapBuffers(window);
-            glfwPollEvents();
+            window.nextFrame();
         }
-        glfwTerminate();
+        window.delete();
     }
 
     private static void setupLights() {
@@ -309,58 +269,54 @@ public class Animation {
         });
     }
 
-    private static void processInput(long window) {
-        if(glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS) {
-            camera.stopProcessingMouseMovement(window);
+    private static void processInput() {
+        if(window.checkIfPressed(GLFW_KEY_1)) {
+            camera.stopProcessingMouseMovement(window.getHandler());
             cameraMovementType = STATIC;
             camera.setCameraPos(new Vector3f(-1.9470121f, 7.8995733f, 25.64252f));
             camera.setCameraFront( new Vector3f(0.110537454f, -0.3583683f, -0.9270134f).normalize());
-        } else if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS) {
-            camera.stopProcessingMouseMovement(window);
+        } else if (window.checkIfPressed(GLFW_KEY_2)) {
+            camera.stopProcessingMouseMovement(window.getHandler());
             cameraMovementType = FOLLOW;
-        } else if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS) {
-            camera.stopProcessingMouseMovement(window);
+        } else if (window.checkIfPressed(GLFW_KEY_3)) {
+            camera.stopProcessingMouseMovement(window.getHandler());
             cameraMovementType = FPV;
-        } else if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS) {
+        } else if (window.checkIfPressed(GLFW_KEY_4)) {
             cameraMovementType = FREE;
-        } else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS &&
-                glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-            // fog up
+        } else if (window.checkIfPressed(GLFW_KEY_LEFT_CONTROL) && window.checkIfPressed(GLFW_KEY_UP)) {
+            // fog factor up
             fogFactor += deltaTime * 0.5f;
             fogFactor = fogFactor > 1 ? 1 : fogFactor;
-        } else if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS &&
-                glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            // fog down
+        } else if (window.checkIfPressed(GLFW_KEY_LEFT_CONTROL) && window.checkIfPressed(GLFW_KEY_DOWN)) {
+            // fog factor down
             fogFactor -= deltaTime * 0.5f;
             fogFactor = fogFactor < 0 ? 0 : fogFactor;
-        }else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-                glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-            // light up
+        }else if (window.checkIfPressed(GLFW_KEY_LEFT_SHIFT) && window.checkIfPressed(GLFW_KEY_UP)) {
+            // light intensity up
             float lightIntensity = directionalLightColor.x;
             lightIntensity += deltaTime * 0.5f;
             lightIntensity = Math.min(lightIntensity, 0.4f);
             directionalLightColor.set(lightIntensity, lightIntensity, lightIntensity);
-        } else if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS &&
-                glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            // light down
+        } else if (window.checkIfPressed(GLFW_KEY_LEFT_SHIFT) && window.checkIfPressed(GLFW_KEY_DOWN)) {
+            // light intensity down
             float lightIntensity = directionalLightColor.x;
             lightIntensity -= deltaTime * 0.5f;
             lightIntensity = Math.max(0, lightIntensity);
             directionalLightColor.set(lightIntensity, lightIntensity, lightIntensity);
-        } else if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
+        } else if (window.checkIfPressed(GLFW_KEY_UP)) {
             spotLightRotation += deltaTime * 10f;
             spotLightRotation = spotLightRotation > 30 ? 30 : spotLightRotation;
-        } else if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
+        } else if (window.checkIfPressed(GLFW_KEY_DOWN)) {
             spotLightRotation -= deltaTime * 10f;
             spotLightRotation = spotLightRotation < -30 ? -30 : spotLightRotation;
-        }  else if (glfwGetKey(window, GLFW_KEY_P) == GLFW_PRESS) {
-            shaderType = PHONG;
-        }  else if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {
-            shaderType = GOURAUD;
-        }  else if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-            shaderType = FLAT;
+        }  else if (window.checkIfPressed(GLFW_KEY_P)) {
+            window.changeCurrentShader(PHONG);
+        }  else if (window.checkIfPressed(GLFW_KEY_G)) {
+            window.changeCurrentShader(GOURAUD);
+        }  else if (window.checkIfPressed(GLFW_KEY_F)) {
+            window.changeCurrentShader(FLAT);
         }
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-            glfwSetWindowShouldClose(window, true);
+        if (window.checkIfPressed(GLFW_KEY_ESCAPE))
+            window.exit();
     }
 }

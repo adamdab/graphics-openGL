@@ -6,9 +6,6 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import org.example.shader.Shader;
 import org.joml.Vector3f;
-/***
- *
- */
 @Getter @Setter
 @SuperBuilder
 public abstract class AbstractLight {
